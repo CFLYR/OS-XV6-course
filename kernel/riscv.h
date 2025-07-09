@@ -17,6 +17,15 @@ r_mhartid()
 #define MSTATUS_MPP_U (0L << 11)
 #define MSTATUS_MIE (1L << 3)    // machine-mode interrupt enable.
 
+
+
+static inline uint64//用于获取当前核心的帧指针
+r_fp() {
+    uint64 x;
+    asm volatile("mv %0, s0" : "=r" (x));// 将s0寄存器的值移动到x中
+    return x;
+}
+
 static inline uint64
 r_mstatus()
 {
@@ -380,3 +389,4 @@ typedef uint64 *pagetable_t; // 512 PTEs
 // Sv39, to avoid having to sign-extend virtual addresses
 // that have the high bit set.
 #define MAXVA (1L << (9 + 9 + 9 + 12 - 1))
+
