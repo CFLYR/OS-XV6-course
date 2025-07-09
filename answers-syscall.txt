@@ -1,0 +1,20 @@
+usertrap
+
+我在gdb中尝试用p /x *p->trapframe和x/wx等命令访问trapframe结构体，但由于trapframe是物理地址，gdb无法直接访问，提示Cannot access memory at address ...。
+结合initcode.S源码可知，a7被赋值为SYS_exec，即系统调用号。查阅syscall.h，SYS_exec的编号为7。因此，p->trapframe->a7的值为7，代表当前进程请求的系统调用号（exec）。
+
+
+上一个模式是用户态（user mode），因为 sstatus 的第8位（SPP）为0。
+
+在 kernel.asm 中，sepc 的值对应的指令是：
+
+80001c82:	00002683          	lw	a3,0(zero) # 0 <_entry-0x80000000>
+
+这条指令是从地址 0 读取数据到寄存器 a3，对应 C 代码中的 num 变量。
+
+内核崩溃的原因是执行了 lw a3,0(zero)，即尝试从物理地址 0 读取数据（空指针解引用）。在 xv6 的内核地址空间中，地址 0 没有被映射（没有有效的物理内存页与之对应），所以会触发异常。
+
+scause 的值为 0xd，表示 load access fault（加载访问异常），这进一步确认了是因为访问了未映射的地址导致的崩溃。
+
+崩溃时正在运行的进程名是：initcode
+可以用 p p->pid 查看进程号（pid），得到initcode 的 pid 是 1。
