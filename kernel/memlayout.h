@@ -64,6 +64,14 @@
 #define TRAPFRAME (TRAMPOLINE - PGSIZE)
 #ifdef LAB_PGTBL
 #define USYSCALL (TRAPFRAME - PGSIZE)
+// 这里是程序的起始位置
+#define KERNBASE 0x80000000L
+// 分配的最大的空间，这里规定了最大内存范围
+#define PHYSTOP (KERNBASE + 128*1024*1024)
+// 这里最多提供12个超级页，虽然实际上是无法提供这么多的，因为内核代码占了一部分。
+// 防止分配太多把普通页表的空间占完了
+#define SUPERBASE (KERNBASE + 512 * PGSIZE * 12)
+
 
 struct usyscall {
   int pid;  // Process ID

@@ -21,13 +21,17 @@ struct run {
 struct {
   struct spinlock lock;
   struct run *freelist;
-} kmem;
+} kmem, supermem;
+// 为链表新增超级页实例
 
 void
 kinit()
 {
   initlock(&kmem.lock, "kmem");
-  freerange(end, (void*)PHYSTOP);
+  freerange(end, (void*)SUPERBASE);
+  superinit();
+  // 这里的end是内核结束的地方，之后直到SUPERBASE都是普通页表可以分配的空间
+  // 而SUPERBASE到PHYSTOP是超级页表可以分配的空间
 }
 
 void
@@ -38,6 +42,34 @@ freerange(void *pa_start, void *pa_end)
   for(; p + PGSIZE <= (char*)pa_end; p += PGSIZE)
     kfree(p);
 }
+
+// 新增的init函数，初始化超级页的空闲链表
+void superinit(){
+  initlock(&supermem.lock, "supermem");
+  char *p;
+  p = (char*)SUPERPGROUNDUP((uint64)SUPERBASE);
+  for(; p + SUPERPGSIZE <= (char*)PHYSTOP; p += SUPERPGSIZE)
+    superfree(p);
+}
+
+// 超级页的释放，直接根据kfree照葫芦画瓢就行了。
+void superfree(void *pa) {
+  struct run *r;
+  // 改成超级页的尺寸，定义在SUPERPGSIZE， 这里爆红是正常的
+  if(((uint64)pa % SUPERPGSIZE) != 0 || (uint64)pa < SUPERBASE || (uint64)pa >= PHYSTOP)
+    panic("superfree");
+  // memset，将内存为都置1，表示处于空闲中
+  memset(pa, 1, SUPERPGSIZE);
+  
+  r = (struct run*)pa;
+  // 加锁，保证链表插入顺序
+  acquire(&supermem.lock);
+  r->next = supermem.freelist;
+  supermem.freelist = r;
+  release(&supermem.lock);
+}
+
+
 
 // Free the page of physical memory pointed at by pa,
 // which normally should have been returned by a
@@ -79,4 +111,20 @@ kalloc(void)
   if(r)
     memset((char*)r, 5, PGSIZE); // fill with junk
   return (void*)r;
+}
+
+//
+void* superalloc(void) {
+  struct run *r;
+  // 获取锁
+  acquire(&supermem.lock);
+  r = supermem.freelist;
+  if(r)
+    // 更新空闲页链表
+    supermem.freelist = r->next;
+  release(&supermem.lock);
+
+  if(r)
+    memset((char*)r, 5, SUPERPGSIZE); // fill with junk
+  return (void*)r; 
 }
