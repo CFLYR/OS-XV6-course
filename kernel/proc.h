@@ -95,6 +95,13 @@ struct proc {
   // wait_lock must be held when using this:
   struct proc *parent;         // Parent process
 
+  uint64 interval;              // 间隔
+  void (*handler)();            // 定时处理的函数
+  uint64 ticks;                 // 上一次调用函数距离的时间
+  struct trapframe *alarm_trapframe;  // 用于恢复 trapframe
+  int alarm_goingoff;           // 是否正在alarm，防止嵌套的中断，导致trapframe丢失
+
+
   // these are private to the process, so p->lock need not be held.
   uint64 kstack;               // Virtual address of kernel stack
   uint64 sz;                   // Size of process memory (bytes)
