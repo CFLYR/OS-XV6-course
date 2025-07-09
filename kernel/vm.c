@@ -487,10 +487,50 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
 }
 
 
+// pagetable: 当前层级的页表指针
+// level: 当前层级（2是顶层，0是页表最低层）
+// va: 当前页表项对应的虚拟地址起始值
+void PRINT(pagetable_t pagetable, int level, uint64 va) {
+  uint64 sz;
+  // 根据当前层级计算该层级每个页表项的虚拟地址的跨度
+  if(level == 2) {
+    sz = 512 * 512 * PGSIZE;
+  } else if(level == 1) {
+    sz = 512 * PGSIZE; 
+  } else {
+    sz = PGSIZE; 
+  }
+  // 遍历该页表的512个PTE
+  for(int i = 0; i < 512; i++, va += sz) {
+    pte_t pte = pagetable[i];
+    // 无效，不管他
+    if((pte & PTE_V) == 0)
+      continue;
+	// 树形结构(假)
+    for(int j = level; j < 3; j++) {
+      printf(" ..");
+    }
+    // 打印当前页表项的信息：
+    // - 虚拟地址 va（从 pagetable 起开始累加）
+    // - 页表项内容（pte）
+    // - 对应的物理地址（通过 PTE2PA 提取）
+    printf("%p: pte %p pa %p\n", 
+           (pagetable_t)va, 
+           (pagetable_t)pte, 
+           (pagetable_t)PTE2PA(pte));
+    // 如果该页表项不是叶子节点（即没有 R/W/X 权限），说明它指向下一级页表
+    // 递归进入下一级页表打印，否则就不管他，直接走就行。
+    if((pte & (PTE_R | PTE_W | PTE_X)) == 0) {
+      PRINT((pagetable_t)PTE2PA(pte), level - 1, va);
+    }
+  }
+}
+
 #ifdef LAB_PGTBL
 void
 vmprint(pagetable_t pagetable) {
-  // your code here
+  printf("page table %p\n", pagetable);
+  PRINT(pagetable, 2, 0);
 }
 #endif
 
