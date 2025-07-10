@@ -173,6 +173,13 @@ uint64          walkaddr(pagetable_t, uint64);
 int             copyout(pagetable_t, uint64, char *, uint64);
 int             copyin(pagetable_t, char *, uint64, uint64);
 int             copyinstr(pagetable_t, char *, uint64, uint64);
+void            refdown(void* pa);
+void            refup(void* pa);
+uint64          refidx(uint64 pa);
+void*           copyPA(void* pa);  // 真正的复制物理页 
+void            copyonwrite(pagetable_t pagetable, uint64 va);  // 写时复制逻辑
+int             iscowpage(pagetable_t pagetable, uint64 va);  // 判断是否为写时复制页
+
 
 // plic.c
 void            plicinit(void);
