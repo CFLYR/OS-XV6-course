@@ -495,3 +495,13 @@ copyonwrite(pagetable_t pagetable, uint64 va) {
     panic("cow mappages failed");
   }
 }
+
+int
+iscowpage(pagetable_t pagetable, uint64 va)
+{
+  pte_t *pte = walk(pagetable, va, 0);
+  if(pte == 0)
+    return 0;
+  // 必须有效且有COW标志
+  return ((*pte & PTE_V) && (*pte & PTE_COW));
+}
