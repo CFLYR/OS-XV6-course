@@ -499,6 +499,8 @@ copyonwrite(pagetable_t pagetable, uint64 va) {
 int
 iscowpage(pagetable_t pagetable, uint64 va)
 {
+  if(va >= MAXVA)
+    return 0; // 地址非法，直接返回不是COW页
   pte_t *pte = walk(pagetable, va, 0);
   if(pte == 0)
     return 0;
